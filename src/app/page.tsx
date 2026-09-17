@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useState, type PointerEvent } from "react";
 
 const integrations = ["Mintlify", "Knowunity", "Composio", "Cargo", "Loop AI", "Moda", "Dart", "Chronicle Labs", "Sorce", "Taiga", "Trellis", "Hyperspell", "Totalis", "Parrot"];
 const heroAgents = ["Claude Code", "Codex", "Opencode", "Cursor", "Pi", "DeepSeek", "Kimi", "Muse Code"];
@@ -45,8 +45,9 @@ const environmentMedia = [
   ["computer-use", "computer-use.png", "computer-use.webm"],
 ] as const;
 
-const HERO_GRID_COLUMNS = 26;
-const HERO_GRID_ROWS = 14;
+const HERO_GRID_COLUMNS = 256;
+const HERO_GRID_ROWS = 160;
+const HERO_CELL_SIZE = 64;
 type LifePattern = ReadonlyArray<readonly [number, number]>;
 const lifeCellKey = (row: number, column: number) => `${row}:${column}`;
 
@@ -64,19 +65,21 @@ const initialLifeCells = (() => {
     });
   };
 
-  place(1, 1, glider);
-  place(1, 21, glider);
-  place(10, 1, glider);
-  place(10, 21, glider);
-  place(2, 8, blinker);
-  place(7, 14, blinker);
-  place(11, 9, blinker);
-  place(4, 5, toad);
-  place(8, 17, toad);
-  place(4, 1, beacon);
-  place(4, 20, beacon);
-  place(10, 7, block);
-  place(10, 18, block);
+  // Keep the initial population around the center of the large virtual field.
+  // This mirrors the reference composition while leaving enough empty space
+  // for the simulation to breathe on every viewport.
+  place(74, 106, blinker);
+  place(74, 122, blinker);
+  place(74, 138, blinker);
+  place(66, 109, glider);
+  place(66, 135, toad);
+  place(79, 113, beacon);
+  place(79, 142, block);
+  place(88, 101, glider);
+  place(88, 146, glider);
+  place(98, 116, toad);
+  place(98, 137, beacon);
+  place(107, 126, blinker);
 
   return cells;
 })();
@@ -93,8 +96,8 @@ function evolveLife(cells: ReadonlySet<string>) {
     for (let rowOffset = -1; rowOffset <= 1; rowOffset += 1) {
       for (let columnOffset = -1; columnOffset <= 1; columnOffset += 1) {
         if (rowOffset === 0 && columnOffset === 0) continue;
-        const neighbourRow = row + rowOffset;
-        const neighbourColumn = column + columnOffset;
+        const neighbourRow = (row + rowOffset + HERO_GRID_ROWS) % HERO_GRID_ROWS;
+        const neighbourColumn = (column + columnOffset + HERO_GRID_COLUMNS) % HERO_GRID_COLUMNS;
         const neighbour = lifeCellKey(neighbourRow, neighbourColumn);
         neighbourCounts.set(neighbour, (neighbourCounts.get(neighbour) ?? 0) + 1);
       }
@@ -159,9 +162,9 @@ function IntegrationsPreview({ kind, paused }: { kind: string; paused: boolean }
 
 export default function Home() {
   useReveal();
-  const [headlinePaused, setHeadlinePaused] = useState(false);
   const [fieldPaused, setFieldPaused] = useState(false);
   const [liveCells, setLiveCells] = useState<Set<string>>(initialLifeCells);
+  const [previousLifeCells, setPreviousLifeCells] = useState<Set<string>>(initialLifeCells);
   const [integrationPaused, setIntegrationPaused] = useState(false);
   const [flowPaused, setFlowPaused] = useState(false);
   const [flowTick, setFlowTick] = useState(0);
@@ -174,7 +177,12 @@ export default function Home() {
 
   useEffect(() => {
     if (fieldPaused) return;
-    const timer = window.setInterval(() => setLiveCells((current) => evolveLife(current)), 1200);
+    const timer = window.setInterval(() => {
+      setLiveCells((current) => {
+        setPreviousLifeCells(current);
+        return evolveLife(current);
+      });
+    }, 1333);
     return () => window.clearInterval(timer);
   }, [fieldPaused]);
 
@@ -206,6 +214,23 @@ export default function Home() {
     });
   }, [integrationPaused]);
 
+  const toggleLifeCell = (event: PointerEvent<HTMLDivElement>) => {
+    const bounds = event.currentTarget.getBoundingClientRect();
+    const column = Math.floor((event.clientX - bounds.left) / HERO_CELL_SIZE);
+    const row = Math.floor((event.clientY - bounds.top) / HERO_CELL_SIZE);
+    if (row < 0 || row >= HERO_GRID_ROWS || column < 0 || column >= HERO_GRID_COLUMNS) return;
+    const cell = lifeCellKey(row, column);
+    setPreviousLifeCells(liveCells);
+    setLiveCells((current) => {
+      const next = new Set(current);
+      if (next.has(cell)) next.delete(cell);
+      else next.add(cell);
+      return next;
+    });
+  };
+
+  const visibleLifeCells = new Set([...liveCells, ...previousLifeCells]);
+
   return (
     <main>
       <nav className="nav">
@@ -214,20 +239,22 @@ export default function Home() {
         <div className="nav-actions"><a className="button ghost nav-demo" href="#contact">BOOK A DEMO</a><a className="button ghost nav-signin" href="#contact">SIGN IN</a><a className="button mint" href="#start">GET STARTED <Arrow /></a></div>
       </nav>
 
+      <div className="hero-shell">
       <section className="hero" id="top">
-        <div className={`agent-field ${fieldPaused ? "paused" : ""}`} aria-hidden="true">{Array.from({ length: HERO_GRID_COLUMNS * HERO_GRID_ROWS }, (_, index) => { const row = Math.floor(index / HERO_GRID_COLUMNS); const column = index % HERO_GRID_COLUMNS; const active = liveCells.has(lifeCellKey(row, column)); return <span key={index} className={`field-cell field-cell-${index % 8} ${active ? "active" : ""}`}><b>AGENT-{String((index * 17) % 99).padStart(2, "0")}</b><i>{["CODING", "DEPLOYING", "REFACTORING", "RUNNING TESTS"][index % 4]}</i></span>; })}</div>
+        <div className={`agent-field ${fieldPaused ? "paused" : ""}`} role="grid" aria-label="Interactive Conway's Game of Life agent field" onPointerDown={toggleLifeCell}>{Array.from(visibleLifeCells, (cell) => { const [rowText, columnText] = cell.split(":"); const row = Number(rowText); const column = Number(columnText); const active = liveCells.has(cell); const rightEdge = !liveCells.has(lifeCellKey(row, (column + 1) % HERO_GRID_COLUMNS)); const bottomEdge = !liveCells.has(lifeCellKey((row + 1) % HERO_GRID_ROWS, column)); const index = row * HERO_GRID_COLUMNS + column; const statuses = ["CODING", "LINTING", "REFACTORING", "RUNNING TESTS", "DEPLOYING", "MERGING"]; return <span key={cell} role="gridcell" aria-label={`Agent ${String((37 * index + 13) % 100).padStart(2, "0")}, ${statuses[index % statuses.length]}`} className={`field-cell ${active ? "active" : "fading"} ${rightEdge ? "has-right-edge" : ""} ${bottomEdge ? "has-bottom-edge" : ""}`} style={{ gridColumn: column + 1, gridRow: row + 1 }}><b>AGENT-{String((37 * index + 13) % 100).padStart(2, "0")}</b><i>{statuses[index % statuses.length]}</i></span>; })}</div>
         <div className="hero-panel hero-intro" data-reveal>
           <span className="corner top-left">+</span><span className="corner top-right">+</span><span className="corner bottom-left">+</span><span className="corner bottom-right">+</span>
           <p className="eyebrow hero-intro-item">THE CLOUD CODING AGENT</p>
-          <h1 className="hero-harness-heading hero-intro-item" aria-label="Your coding agent on Cloud" data-playing={!headlinePaused}><span className="hero-harness-window" aria-hidden="true"><span className="hero-harness-track">{[...heroAgents, heroAgents[0]].map((provider, index) => <span key={`${provider}-${index}-hero`} className="hero-harness-name" data-provider={providerSlug(provider)}><span className={`hero-harness-brand hero-provider-${providerSlug(provider)}`}><ProviderLogo provider={provider} /><span>{provider}</span></span></span>)}</span></span><span className="hero-harness-suffix" aria-hidden="true"> on Cloud</span></h1>
+          <h1 className="hero-heading hero-intro-item">The Cloud<br />Coding Agent</h1>
           <p className="hero-copy hero-intro-item">Run coding agents inside cloud machines with your codebases, tooling, and dependencies. Delegate, iterate, review from anywhere.</p>
           <div className="hero-actions hero-intro-item"><a className="button ghost" href="#contact">BOOK A DEMO</a><a className="button mint" href="#start">GET STARTED FOR FREE <Arrow /></a></div>
           <small className="hero-intro-item">Try for 14 days, no card required.</small>
         </div>
-        <div className="hero-controls"><button className="what-button" type="button" onClick={() => setWhatIsOpen((value) => !value)} aria-expanded={whatIsOpen}>WHAT IS THIS?</button><button className="pause" type="button" aria-label={fieldPaused ? "Resume Game of Life" : "Pause Game of Life"} onClick={() => setFieldPaused((value) => !value)}>{fieldPaused ? "▶ RESUME" : "Ⅱ PAUSE"}</button><label className="headline-pause"><input type="checkbox" aria-label="Pause headline animation" checked={headlinePaused} onChange={(event) => setHeadlinePaused(event.target.checked)} /></label>{whatIsOpen && <div className="what-popover" role="dialog" aria-label="About the Game of Life"><b>GAME OF LIFE · B3/S23</b><p>Live cells survive with 2 or 3 neighbours. Dead cells are born with exactly 3.</p><button type="button" onClick={() => setWhatIsOpen(false)}>CLOSE</button></div>}</div>
+        <div className="hero-controls"><button className="what-button" type="button" onMouseEnter={() => setWhatIsOpen(true)} onFocus={() => setWhatIsOpen(true)} onClick={() => setWhatIsOpen(true)} aria-expanded={whatIsOpen}>WHAT IS THIS?</button><button className="pause" type="button" aria-label={fieldPaused ? "Resume Game of Life" : "Pause Game of Life"} onClick={() => setFieldPaused((value) => !value)}><span aria-hidden="true">{fieldPaused ? "▶" : "Ⅱ"}</span> {fieldPaused ? "RESUME" : "PAUSE"}</button>{whatIsOpen && <div className="what-popover" role="dialog" aria-label="About the Game of Life"><b>GAME OF LIFE · B3/S23</b><h3>Conway’s Game of Life</h3><p>Every square is either alive or dead. Each generation is calculated at the same time from the current generation.</p><ul><li>A live cell survives with two or three live neighbours.</li><li>A dead cell becomes alive with exactly three live neighbours.</li><li>All other live cells die, and all other dead cells stay empty.</li></ul><p className="what-popover-note">Click any square in the field to seed or remove a cell.</p><a href="https://en.wikipedia.org/wiki/Conway%27s_Game_of_Life" target="_blank" rel="noreferrer">Read the rules on Wikipedia ↗</a><button type="button" onClick={() => setWhatIsOpen(false)}>CLOSE</button></div>}</div>
       </section>
 
       <div className="ticker-viewport"><div className="ticker" aria-label="Trusted teams">{[...integrations, ...integrations].map((name, index) => <span key={`${name}-${index}`}>{name}</span>)}</div></div>
+      </div>
 
       <section className="reference-section light workflow" id="workflow" data-reveal>
         <div className="section-intro"><p className="eyebrow dark-eyebrow">HOW IT WORKS</p><h2>Delegate to any coding agent.<br />Get engineering work back.</h2></div>
@@ -256,7 +283,7 @@ export default function Home() {
         <div className="environment-panel">
           <div className="environment-tabs" role="tablist" aria-label="Sandbox capabilities">
             {environmentTabs.map(([title, description], index) => {
-              const tabOffsets = environment === 0 ? [0, 159, 224] : environment === 1 ? [0, 65, 224] : [0, 65, 224];
+              const tabOffsets = [65 + 94 * (environment === 0 ? 1 : 0), 130 + 94 * (environment < 2 ? 1 : 0), 289];
               return <button key={title} id={`environment-tab-${index}`} type="button" role="tab" aria-selected={environment === index} aria-controls={`environment-panel-${index}`} className={environment === index ? "active" : ""} style={{ transform: `translate3d(0, ${tabOffsets[index]}px, 0)` }} onClick={() => setEnvironment(index)}><span className="environment-tab-title">{title}</span>{environment === index && <span className="environment-tab-description">{description}</span>}</button>;
             })}
           </div>

@@ -183,3 +183,206 @@ main{overflow:clip}.hero{height:780px;min-height:0}
     padding: 0;
   }
 }
+
+/* Final reference geometry: the hero owns the full viewport below the nav,
+   including its ticker, so the next section cannot leak into the first frame. */
+:root {
+  --mono: "Geist Mono", "DM Mono", monospace;
+  --sans: "General Sans", "Manrope", sans-serif;
+}
+
+.hero-shell {
+  height: calc(100svh - 59px);
+  min-height: 620px;
+  display: grid;
+  grid-template-rows: minmax(0, 1fr) 73px;
+  overflow: hidden;
+}
+
+.hero {
+  height: auto;
+  min-height: 0;
+  background-size: 64px 64px;
+}
+
+.agent-field {
+  --hero-cell-size: 64px;
+  inset: 50% auto auto 50%;
+  width: calc(256 * var(--hero-cell-size));
+  height: calc(160 * var(--hero-cell-size));
+  display: grid;
+  grid-template-columns: repeat(256, var(--hero-cell-size));
+  grid-template-rows: repeat(160, var(--hero-cell-size));
+  align-content: start;
+  justify-content: start;
+  transform: translate(-50%, -50%);
+  opacity: 1;
+  cursor: crosshair;
+}
+
+.field-cell {
+  width: var(--hero-cell-size);
+  height: var(--hero-cell-size);
+  min-width: 0;
+  min-height: 0;
+  position: relative;
+  padding: 8px 6px;
+  border-top: 1px solid #32dca2;
+  border-left: 1px solid #32dca2;
+  border-right: 1px solid var(--cell-right, transparent);
+  border-bottom: 1px solid var(--cell-bottom, transparent);
+  background: linear-gradient(135deg, #082b24f2, #005b45d1);
+  color: #50e8b5;
+  font: 600 5px/1 var(--mono);
+  text-transform: uppercase;
+  opacity: 0;
+  transform: none;
+  transition: opacity .25s linear, filter .12s ease, box-shadow .25s linear;
+  box-shadow: inset 0 0 18px #3eeba31f;
+  will-change: opacity, box-shadow;
+}
+
+.field-cell b,
+.field-cell i {
+  display: block;
+  overflow: hidden;
+  white-space: nowrap;
+  text-overflow: clip;
+}
+
+.field-cell i {
+  margin-top: 10px;
+  color: #65dcb0;
+  font-style: normal;
+  opacity: .72;
+}
+
+.field-cell.active {
+  --cell-right: transparent;
+  --cell-bottom: transparent;
+  opacity: .86;
+  box-shadow: inset 0 0 18px #3eeba31f, 0 0 18px #3eeba31f;
+}
+
+.field-cell.fading {
+  opacity: 0;
+  pointer-events: none;
+}
+
+.field-cell.has-right-edge { --cell-right: #32dca2; }
+.field-cell.has-bottom-edge { --cell-bottom: #32dca2; }
+.field-cell:hover { filter: brightness(1.24); }
+
+.hero-panel.hero-intro {
+  width: min(704px, calc(100% - 32px));
+  height: 320px;
+  padding: 24px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 16px;
+}
+
+.hero-intro .eyebrow,
+.hero-intro .hero-copy,
+.hero-intro small,
+.hero-intro .hero-actions { margin: 0; }
+.hero-intro .eyebrow { font-size: 10px; }
+.hero-heading {
+  margin: 0;
+  color: #f4f4ef;
+  font-size: clamp(44px, min(5vw, 8vh), 56px);
+  font-weight: 400;
+  line-height: .96;
+  letter-spacing: -.055em;
+  text-wrap: balance;
+}
+.hero-intro .hero-copy { max-width: 505px; line-height: 1.45; }
+.hero-intro .hero-actions { margin-top: 0; }
+
+.hero-controls {
+  right: 24px;
+  bottom: 24px;
+}
+
+.what-button,
+.pause,
+.section-pause {
+  min-height: 32px;
+  padding: 8px 10px;
+  font: 700 11px/1 var(--mono);
+  letter-spacing: 0;
+}
+
+.what-popover {
+  right: 0;
+  bottom: 42px;
+  width: min(380px, calc(100vw - 32px));
+  max-height: min(520px, calc(100vh - 110px));
+  overflow: auto;
+  padding: 20px;
+  background: #121212;
+  border: 1px solid #2b2d2c;
+  box-shadow: 0 20px 50px #000b;
+}
+.what-popover h3 { margin: 14px 0 8px; font: 400 21px/1.1 var(--sans); color: #f4f4ef; }
+.what-popover p { margin: 0 0 13px; font: 13px/1.5 var(--sans); color: #a8b3ab; }
+.what-popover ul { margin: 0 0 16px; padding-left: 18px; color: #dce5dd; font: 12px/1.55 var(--sans); }
+.what-popover li + li { margin-top: 7px; }
+.what-popover .what-popover-note { color: #62d9ad; font-family: var(--mono); font-size: 10px; }
+.what-popover a { display: inline-block; margin-bottom: 16px; color: var(--mint); font: 10px var(--mono); }
+.what-popover button { display: block; margin-left: auto; }
+
+.ticker-viewport,
+.ticker-viewport .ticker { height: 73px; }
+.ticker-viewport .ticker { align-items: center; padding: 0; }
+
+.workflow,
+.integration-section,
+.analytics,
+.environment,
+.faq,
+.closing { background-size: 64px 64px; }
+.workflow { padding-top: 148px; padding-bottom: 156px; }
+.integration-section { padding-top: 148px; padding-bottom: 156px; }
+.analytics { padding-top: 148px; padding-bottom: 156px; }
+.faq { position: relative; isolation: isolate; }
+.faq::before { content: ""; position: absolute; inset: 0; z-index: -1; pointer-events: none; opacity: .12; background-image: radial-gradient(#656b65 1px, transparent 1px); background-size: 12px 12px; }
+.faq-list { width: 100%; }
+
+@media (prefers-reduced-motion: reduce) {
+  .field-cell,
+  .field-cell.active,
+  .field-cell.fading { transition: none; }
+  .field-cell:hover { filter: none; }
+}
+
+@media (max-width: 800px) {
+  .hero-shell {
+    height: auto;
+    min-height: 0;
+    grid-template-rows: minmax(620px, calc(100svh - 68px - 58px)) 58px;
+  }
+  .hero { min-height: 620px; padding: 0; }
+  .agent-field {
+    --hero-cell-size: 55px;
+    width: calc(256 * var(--hero-cell-size));
+    height: calc(160 * var(--hero-cell-size));
+    grid-template-columns: repeat(256, var(--hero-cell-size));
+    grid-template-rows: repeat(160, var(--hero-cell-size));
+  }
+  .hero-panel.hero-intro { height: auto; min-height: 320px; padding: 24px; }
+  .hero-heading { font-size: clamp(42px, 11vw, 56px); }
+  .hero-controls { right: 20px; bottom: 16px; }
+  .what-button { display: inline-flex; }
+  .ticker-viewport,
+  .ticker-viewport .ticker { height: 58px; }
+  .ticker-viewport .ticker { gap: 38px; }
+  .workflow,
+  .integration-section,
+  .analytics,
+  .environment,
+  .faq,
+  .closing { padding-top: 82px; padding-bottom: 112px; }
+}
