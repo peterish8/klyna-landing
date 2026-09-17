@@ -45,12 +45,68 @@ const environmentMedia = [
   ["computer-use", "computer-use.png", "computer-use.webm"],
 ] as const;
 
-const lifePatterns = [
-  [0, 1, 14, 15, 28, 42, 11, 12, 25, 26, 39, 53, 70, 71, 72, 73],
-  [1, 2, 15, 16, 29, 30, 12, 13, 26, 40, 41, 54, 69, 70, 83],
-  [0, 14, 28, 29, 43, 44, 12, 26, 27, 40, 54, 55, 68, 69, 82],
-  [0, 1, 15, 16, 30, 44, 11, 25, 26, 39, 40, 53, 67, 68, 69, 83],
-] as const;
+const HERO_GRID_COLUMNS = 26;
+const HERO_GRID_ROWS = 14;
+type LifePattern = ReadonlyArray<readonly [number, number]>;
+const lifeCellKey = (row: number, column: number) => `${row}:${column}`;
+
+const glider: LifePattern = [[0, 1], [1, 2], [2, 0], [2, 1], [2, 2]];
+const blinker: LifePattern = [[0, 0], [0, 1], [0, 2]];
+const block: LifePattern = [[0, 0], [0, 1], [1, 0], [1, 1]];
+const beacon: LifePattern = [[0, 0], [0, 1], [1, 0], [1, 1], [2, 2], [2, 3], [3, 2], [3, 3]];
+const toad: LifePattern = [[0, 1], [0, 2], [0, 3], [1, 0], [1, 1], [1, 2]];
+
+const initialLifeCells = (() => {
+  const cells = new Set<string>();
+  const place = (row: number, column: number, pattern: LifePattern) => {
+    pattern.forEach(([rowOffset, columnOffset]) => {
+      cells.add(lifeCellKey(row + rowOffset, column + columnOffset));
+    });
+  };
+
+  place(1, 1, glider);
+  place(1, 21, glider);
+  place(10, 1, glider);
+  place(10, 21, glider);
+  place(2, 8, blinker);
+  place(7, 14, blinker);
+  place(11, 9, blinker);
+  place(4, 5, toad);
+  place(8, 17, toad);
+  place(4, 1, beacon);
+  place(4, 20, beacon);
+  place(10, 7, block);
+  place(10, 18, block);
+
+  return cells;
+})();
+
+// Conway's Game of Life, B3/S23: every generation is calculated from the
+// previous generation so births and deaths happen simultaneously.
+function evolveLife(cells: ReadonlySet<string>) {
+  const neighbourCounts = new Map<string, number>();
+
+  cells.forEach((cell) => {
+    const [rowText, columnText] = cell.split(":");
+    const row = Number(rowText);
+    const column = Number(columnText);
+    for (let rowOffset = -1; rowOffset <= 1; rowOffset += 1) {
+      for (let columnOffset = -1; columnOffset <= 1; columnOffset += 1) {
+        if (rowOffset === 0 && columnOffset === 0) continue;
+        const neighbourRow = row + rowOffset;
+        const neighbourColumn = column + columnOffset;
+        const neighbour = lifeCellKey(neighbourRow, neighbourColumn);
+        neighbourCounts.set(neighbour, (neighbourCounts.get(neighbour) ?? 0) + 1);
+      }
+    }
+  });
+
+  const nextGeneration = new Set<string>();
+  neighbourCounts.forEach((count, cell) => {
+    if (count === 3 || (count === 2 && cells.has(cell))) nextGeneration.add(cell);
+  });
+  return nextGeneration;
+}
 
 function Arrow() { return <span aria-hidden="true">↗</span>; }
 
@@ -105,7 +161,7 @@ export default function Home() {
   useReveal();
   const [headlinePaused, setHeadlinePaused] = useState(false);
   const [fieldPaused, setFieldPaused] = useState(false);
-  const [lifeTick, setLifeTick] = useState(0);
+  const [liveCells, setLiveCells] = useState<Set<string>>(initialLifeCells);
   const [integrationPaused, setIntegrationPaused] = useState(false);
   const [flowPaused, setFlowPaused] = useState(false);
   const [flowTick, setFlowTick] = useState(0);
@@ -118,7 +174,7 @@ export default function Home() {
 
   useEffect(() => {
     if (fieldPaused) return;
-    const timer = window.setInterval(() => setLifeTick((current) => (current + 1) % lifePatterns.length), 1200);
+    const timer = window.setInterval(() => setLiveCells((current) => evolveLife(current)), 1200);
     return () => window.clearInterval(timer);
   }, [fieldPaused]);
 
@@ -150,8 +206,6 @@ export default function Home() {
     });
   }, [integrationPaused]);
 
-  const liveCells = new Set<number>(lifePatterns[lifeTick]);
-
   return (
     <main>
       <nav className="nav">
@@ -161,7 +215,7 @@ export default function Home() {
       </nav>
 
       <section className="hero" id="top">
-        <div className={`agent-field ${fieldPaused ? "paused" : ""}`} aria-hidden="true">{Array.from({ length: 364 }, (_, index) => { const row = Math.floor(index / 26); const column = index % 26; const perimeter = column < 6 || column > 19 || row < 3 || row > 8; const active = perimeter && (liveCells.has((index + row * 3) % 84) || liveCells.has((index + 17) % 84)); return <span key={index} className={`field-cell field-cell-${index % 8} ${active ? "active" : ""}`}><b>AGENT-{String((index * 17) % 99).padStart(2, "0")}</b><i>{["CODING", "DEPLOYING", "REFACTORING", "RUNNING TESTS"][index % 4]}</i></span>; })}</div>
+        <div className={`agent-field ${fieldPaused ? "paused" : ""}`} aria-hidden="true">{Array.from({ length: HERO_GRID_COLUMNS * HERO_GRID_ROWS }, (_, index) => { const row = Math.floor(index / HERO_GRID_COLUMNS); const column = index % HERO_GRID_COLUMNS; const active = liveCells.has(lifeCellKey(row, column)); return <span key={index} className={`field-cell field-cell-${index % 8} ${active ? "active" : ""}`}><b>AGENT-{String((index * 17) % 99).padStart(2, "0")}</b><i>{["CODING", "DEPLOYING", "REFACTORING", "RUNNING TESTS"][index % 4]}</i></span>; })}</div>
         <div className="hero-panel hero-intro" data-reveal>
           <span className="corner top-left">+</span><span className="corner top-right">+</span><span className="corner bottom-left">+</span><span className="corner bottom-right">+</span>
           <p className="eyebrow hero-intro-item">THE CLOUD CODING AGENT</p>
@@ -170,7 +224,7 @@ export default function Home() {
           <div className="hero-actions hero-intro-item"><a className="button ghost" href="#contact">BOOK A DEMO</a><a className="button mint" href="#start">GET STARTED FOR FREE <Arrow /></a></div>
           <small className="hero-intro-item">Try for 14 days, no card required.</small>
         </div>
-        <div className="hero-controls"><button className="what-button" type="button" onClick={() => setWhatIsOpen((value) => !value)} aria-expanded={whatIsOpen}>WHAT IS THIS?</button><button className="pause" type="button" aria-label={fieldPaused ? "Resume Game of Life" : "Pause Game of Life"} onClick={() => setFieldPaused((value) => !value)}>{fieldPaused ? "▶ RESUME" : "Ⅱ PAUSE"}</button><label className="headline-pause"><input type="checkbox" aria-label="Pause headline animation" checked={headlinePaused} onChange={(event) => setHeadlinePaused(event.target.checked)} /></label>{whatIsOpen && <div className="what-popover" role="dialog" aria-label="About the Game of Life"><b>GAME OF LIFE</b><p>Each cell represents a cloud agent moving through a real engineering run.</p><button type="button" onClick={() => setWhatIsOpen(false)}>CLOSE</button></div>}</div>
+        <div className="hero-controls"><button className="what-button" type="button" onClick={() => setWhatIsOpen((value) => !value)} aria-expanded={whatIsOpen}>WHAT IS THIS?</button><button className="pause" type="button" aria-label={fieldPaused ? "Resume Game of Life" : "Pause Game of Life"} onClick={() => setFieldPaused((value) => !value)}>{fieldPaused ? "▶ RESUME" : "Ⅱ PAUSE"}</button><label className="headline-pause"><input type="checkbox" aria-label="Pause headline animation" checked={headlinePaused} onChange={(event) => setHeadlinePaused(event.target.checked)} /></label>{whatIsOpen && <div className="what-popover" role="dialog" aria-label="About the Game of Life"><b>GAME OF LIFE · B3/S23</b><p>Live cells survive with 2 or 3 neighbours. Dead cells are born with exactly 3.</p><button type="button" onClick={() => setWhatIsOpen(false)}>CLOSE</button></div>}</div>
       </section>
 
       <div className="ticker-viewport"><div className="ticker" aria-label="Trusted teams">{[...integrations, ...integrations].map((name, index) => <span key={`${name}-${index}`}>{name}</span>)}</div></div>

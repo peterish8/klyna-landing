@@ -56,7 +56,7 @@ package.json       # Scripts and dependencies
 
 ## Hero motion
 
-The hero tile field is a lightweight client-side Game of Life-style presentation. Its state advances every `1200ms`, intentionally running at 0.75× the previous 900 ms cadence. The tile transitions live in `src/app/globals.css`, and the hero pause button stops the state updates and tile transitions. Users who enable reduced motion get static tiles and no decorative animation.
+The hero tile field is a client-side Conway’s Game of Life simulation using the standard `B3/S23` rules: live cells survive with two or three neighbours, and dead cells are born with exactly three. Generations are calculated simultaneously from the previous state on an unbounded coordinate set, while the hero renders a 26×14 viewport into that field. Generations advance every `1200ms`, intentionally running at 0.75× the previous 900 ms cadence. The tile transitions live in `src/app/globals.css`, and the hero pause button stops state updates and transitions. Users who enable reduced motion get static tiles and no decorative animation.
 
 ## Deployment
 
