@@ -161,7 +161,7 @@ export default function Home() {
       </nav>
 
       <section className="hero" id="top">
-        <div className={`agent-field ${fieldPaused ? "paused" : ""}`} aria-hidden="true">{Array.from({ length: 264 }, (_, index) => { const row = Math.floor(index / 22); const column = index % 22; const perimeter = column < 6 || column > 15 || row < 3 || row > 8; const active = perimeter && (liveCells.has((index + row * 3) % 84) || liveCells.has((index + 17) % 84)); return <span key={index} className={`field-cell field-cell-${index % 8} ${active ? "active" : ""}`}><b>AGENT-{String((index * 17) % 99).padStart(2, "0")}</b><i>{["CODING", "DEPLOYING", "REFACTORING", "RUNNING TESTS"][index % 4]}</i></span>; })}</div>
+        <div className={`agent-field ${fieldPaused ? "paused" : ""}`} aria-hidden="true">{Array.from({ length: 364 }, (_, index) => { const row = Math.floor(index / 26); const column = index % 26; const perimeter = column < 6 || column > 19 || row < 3 || row > 8; const active = perimeter && (liveCells.has((index + row * 3) % 84) || liveCells.has((index + 17) % 84)); return <span key={index} className={`field-cell field-cell-${index % 8} ${active ? "active" : ""}`}><b>AGENT-{String((index * 17) % 99).padStart(2, "0")}</b><i>{["CODING", "DEPLOYING", "REFACTORING", "RUNNING TESTS"][index % 4]}</i></span>; })}</div>
         <div className="hero-panel hero-intro" data-reveal>
           <span className="corner top-left">+</span><span className="corner top-right">+</span><span className="corner bottom-left">+</span><span className="corner bottom-right">+</span>
           <p className="eyebrow hero-intro-item">THE CLOUD CODING AGENT</p>
