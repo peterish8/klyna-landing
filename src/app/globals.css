@@ -215,7 +215,7 @@ main{overflow:clip}.hero{height:780px;min-height:0}
   grid-template-rows: repeat(160, var(--hero-cell-size));
   align-content: start;
   justify-content: start;
-  transform: translate(-50%, -50%);
+  transform: translate(calc(-50% + var(--grid-x-shift, 0px)), calc(-50% + var(--grid-y-shift, 0px)));
   opacity: 1;
   cursor: crosshair;
 }
@@ -367,7 +367,7 @@ main{overflow:clip}.hero{height:780px;min-height:0}
   }
   .hero { min-height: 620px; padding: 0; }
   .agent-field {
-    --hero-cell-size: 55px;
+    --hero-cell-size: 64px;
     width: calc(256 * var(--hero-cell-size));
     height: calc(160 * var(--hero-cell-size));
     grid-template-columns: repeat(256, var(--hero-cell-size));

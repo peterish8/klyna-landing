@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState, type PointerEvent } from "react";
+import { useEffect, useRef, useState, type CSSProperties, type PointerEvent } from "react";
 
 const integrations = ["Mintlify", "Knowunity", "Composio", "Cargo", "Loop AI", "Moda", "Dart", "Chronicle Labs", "Sorce", "Taiga", "Trellis", "Hyperspell", "Totalis", "Parrot"];
 const heroAgents = ["Claude Code", "Codex", "Opencode", "Cursor", "Pi", "DeepSeek", "Kimi", "Muse Code"];
@@ -53,8 +53,29 @@ const lifeCellKey = (row: number, column: number) => `${row}:${column}`;
 
 const glider: LifePattern = [[0, 1], [1, 2], [2, 0], [2, 1], [2, 2]];
 const blinker: LifePattern = [[0, 0], [0, 1], [0, 2]];
-const beacon: LifePattern = [[0, 0], [0, 1], [1, 0], [1, 1], [2, 2], [2, 3], [3, 2], [3, 3]];
 const toad: LifePattern = [[0, 1], [0, 2], [0, 3], [1, 0], [1, 1], [1, 2]];
+const movingPatterns = [glider, blinker, toad] as const;
+
+function movingSeeds(seed: number) {
+  let value = (seed + 1) * 1664525 + 1013904223;
+  const nextRandom = () => {
+    value = (value * 1664525 + 1013904223) >>> 0;
+    return value / 4294967296;
+  };
+  const cells = new Set<string>();
+  movingPatterns.forEach((pattern, index) => {
+    const row = 64 + Math.floor(nextRandom() * 30);
+    const column = 104 + Math.floor(nextRandom() * 48);
+    pattern.forEach(([rowOffset, columnOffset]) => {
+      cells.add(lifeCellKey(row + rowOffset, column + columnOffset));
+    });
+    if (index === movingPatterns.length - 1) {
+      const extraColumn = 104 + Math.floor(nextRandom() * 48);
+      cells.add(lifeCellKey(70 + Math.floor(nextRandom() * 24), extraColumn));
+    }
+  });
+  return cells;
+}
 
 const initialLifeCells = (() => {
   const cells = new Set<string>();
@@ -76,11 +97,9 @@ const initialLifeCells = (() => {
   place(75, 135, blinker);
   place(66, 109, glider);
   place(66, 135, toad);
-  place(79, 113, beacon);
   place(88, 101, glider);
   place(88, 146, glider);
   place(98, 116, toad);
-  place(98, 137, beacon);
   place(107, 126, blinker);
 
   return cells;
@@ -189,13 +208,36 @@ export default function Home() {
   const [whatIsOpen, setWhatIsOpen] = useState(false);
   const [environment, setEnvironment] = useState(0);
   const [openFaq, setOpenFaq] = useState(0);
+  const lifeGeneration = useRef(0);
+  const [fieldAlignment, setFieldAlignment] = useState({ x: 0, y: 0 });
+
+  useEffect(() => {
+    const alignFieldToGrid = () => {
+      const hero = document.querySelector<HTMLElement>(".hero");
+      const field = document.querySelector<HTMLElement>(".agent-field");
+      if (!hero || !field) return;
+      const heroBounds = hero.getBoundingClientRect();
+      const fieldBounds = field.getBoundingClientRect();
+      const remainder = (value: number) => ((value % HERO_CELL_SIZE) + HERO_CELL_SIZE) % HERO_CELL_SIZE;
+      setFieldAlignment({
+        x: -remainder(fieldBounds.left - heroBounds.left),
+        y: -remainder(fieldBounds.top - heroBounds.top),
+      });
+    };
+    alignFieldToGrid();
+    window.addEventListener("resize", alignFieldToGrid);
+    return () => window.removeEventListener("resize", alignFieldToGrid);
+  }, []);
 
   useEffect(() => {
     if (fieldPaused) return;
     const timer = window.setInterval(() => {
       setLiveCells((current) => {
         setPreviousLifeCells(current);
-        return evolveLife(current);
+        const generation = lifeGeneration.current;
+        lifeGeneration.current += 1;
+        const evolved = evolveLife(current);
+        return generation % 4 === 0 || evolved.size < 14 ? movingSeeds(generation) : evolved;
       });
     }, 1333);
     return () => window.clearInterval(timer);
@@ -264,7 +306,7 @@ export default function Home() {
 
       <div className="hero-shell">
       <section className="hero" id="top">
-        <div className={`agent-field ${fieldPaused ? "paused" : ""}`} role="grid" aria-label="Interactive Conway's Game of Life agent field" onPointerDown={toggleLifeCell}>{Array.from(visibleLifeCells, (cell) => { const [rowText, columnText] = cell.split(":"); const row = Number(rowText); const column = Number(columnText); const active = liveCells.has(cell); const rightEdge = !liveCells.has(lifeCellKey(row, (column + 1) % HERO_GRID_COLUMNS)); const bottomEdge = !liveCells.has(lifeCellKey((row + 1) % HERO_GRID_ROWS, column)); const index = row * HERO_GRID_COLUMNS + column; const statuses = ["CODING", "LINTING", "REFACTORING", "RUNNING TESTS", "DEPLOYING", "MERGING"]; return <span key={cell} role="gridcell" aria-label={`Agent ${String((37 * index + 13) % 100).padStart(2, "0")}, ${statuses[index % statuses.length]}`} className={`field-cell ${active ? "active" : "fading"} ${rightEdge ? "has-right-edge" : ""} ${bottomEdge ? "has-bottom-edge" : ""}`} style={{ gridColumn: column + 1, gridRow: row + 1 }}><b>AGENT-{String((37 * index + 13) % 100).padStart(2, "0")}</b><i>{statuses[index % statuses.length]}</i></span>; })}</div>
+        <div className={`agent-field ${fieldPaused ? "paused" : ""}`} role="grid" aria-label="Interactive Conway's Game of Life agent field" onPointerDown={toggleLifeCell} style={{ "--grid-x-shift": `${fieldAlignment.x}px`, "--grid-y-shift": `${fieldAlignment.y}px` } as CSSProperties}>{Array.from(visibleLifeCells, (cell) => { const [rowText, columnText] = cell.split(":"); const row = Number(rowText); const column = Number(columnText); const active = liveCells.has(cell); const rightEdge = !liveCells.has(lifeCellKey(row, (column + 1) % HERO_GRID_COLUMNS)); const bottomEdge = !liveCells.has(lifeCellKey((row + 1) % HERO_GRID_ROWS, column)); const index = row * HERO_GRID_COLUMNS + column; const statuses = ["CODING", "LINTING", "REFACTORING", "RUNNING TESTS", "DEPLOYING", "MERGING"]; return <span key={cell} role="gridcell" aria-label={`Agent ${String((37 * index + 13) % 100).padStart(2, "0")}, ${statuses[index % statuses.length]}`} className={`field-cell ${active ? "active" : "fading"} ${rightEdge ? "has-right-edge" : ""} ${bottomEdge ? "has-bottom-edge" : ""}`} style={{ gridColumn: column + 1, gridRow: row + 1 }}><b>AGENT-{String((37 * index + 13) % 100).padStart(2, "0")}</b><i>{statuses[index % statuses.length]}</i></span>; })}</div>
         <div className="hero-panel hero-intro" data-reveal>
           <span className="corner top-left">+</span><span className="corner top-right">+</span><span className="corner bottom-left">+</span><span className="corner bottom-right">+</span>
           <p className="eyebrow hero-intro-item">THE CLOUD CODING AGENT</p>
