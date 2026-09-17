@@ -478,3 +478,78 @@ main{overflow:clip}.hero{height:780px;min-height:0}
   .nav-signin { display: none; }
   .nav-actions .button { min-height: 32px; padding: 0 11px; font-size: 9px; }
 }
+
+/* The reference workflow slide is a quiet, cool-white canvas. Its grid is
+   only a framing detail at the top and bottom edges, leaving the cards and
+   headline on an uninterrupted field. */
+.workflow {
+  background-color: #f1f5f6;
+  background-image: none;
+  overflow: hidden;
+  isolation: isolate;
+}
+
+.workflow::before,
+.workflow::after {
+  content: "";
+  position: absolute;
+  left: 0;
+  right: 0;
+  height: 150px;
+  z-index: -1;
+  pointer-events: none;
+  background-image:
+    linear-gradient(#c9d5d5 1px, transparent 1px),
+    linear-gradient(90deg, #c9d5d5 1px, transparent 1px);
+  background-size: 64px 64px;
+  opacity: .7;
+}
+
+.workflow::before {
+  top: 0;
+  mask-image: linear-gradient(to bottom, #000 15%, transparent 100%);
+}
+
+.workflow::after {
+  bottom: 0;
+  mask-image: linear-gradient(to top, #000 15%, transparent 100%);
+}
+
+.workflow > * { position: relative; z-index: 1; }
+.workflow .section-intro { margin-bottom: 60px; }
+.workflow .dark-eyebrow { color: #416c59; }
+.workflow .flow-grid { gap: 38px; }
+.workflow .flow-card h3 {
+  color: #161d1e;
+  font: 500 16px/1.2 var(--sans);
+  letter-spacing: -.45px;
+}
+
+.workflow .flow-card > p {
+  max-width: 340px;
+  color: #697477;
+  font: 15px/1.35 var(--sans);
+  letter-spacing: -.2px;
+}
+
+.workflow .paper-preview {
+  border-color: #d4dfe1;
+  background: #edf2f4;
+  box-shadow: 0 14px 30px #9eacb226;
+}
+
+.workflow .paper-preview::after {
+  background: radial-gradient(circle at 20% 20%, #ffffffb8, transparent 48%);
+}
+
+.workflow .linear-paper b,
+.workflow .harness-paper b,
+.workflow .review-paper b {
+  color: #1c2926;
+}
+
+@media (max-width: 800px) {
+  .workflow::before,
+  .workflow::after { height: 118px; }
+  .workflow .section-intro { margin-bottom: 46px; }
+}
