@@ -484,8 +484,7 @@ main{overflow:clip}.hero{height:780px;min-height:0}
    only a framing detail at the top and bottom edges, leaving the cards and
    headline on an uninterrupted field. */
 .workflow {
-  background-color: #f1f5f6;
-  background-image: none;
+  background: #f1f5f6;
   overflow: hidden;
   isolation: isolate;
 }

@@ -53,7 +53,6 @@ const lifeCellKey = (row: number, column: number) => `${row}:${column}`;
 
 const glider: LifePattern = [[0, 1], [1, 2], [2, 0], [2, 1], [2, 2]];
 const blinker: LifePattern = [[0, 0], [0, 1], [0, 2]];
-const block: LifePattern = [[0, 0], [0, 1], [1, 0], [1, 1]];
 const beacon: LifePattern = [[0, 0], [0, 1], [1, 0], [1, 1], [2, 2], [2, 3], [3, 2], [3, 3]];
 const toad: LifePattern = [[0, 1], [0, 2], [0, 3], [1, 0], [1, 1], [1, 2]];
 
@@ -71,18 +70,13 @@ const initialLifeCells = (() => {
   place(74, 106, blinker);
   place(74, 122, blinker);
   place(74, 138, blinker);
-  // Stable edge anchors keep the reference frame populated while the moving
-  // patterns evolve behind the panel.
-  place(69, 116, block);
-  place(69, 135, block);
-  place(85, 116, block);
-  place(85, 135, block);
+  // Keep the visible composition moving: every seed is an oscillator or
+  // travelling pattern, so the field never contains hand-pinned still lifes.
   place(75, 116, toad);
   place(75, 135, blinker);
   place(66, 109, glider);
   place(66, 135, toad);
   place(79, 113, beacon);
-  place(79, 142, block);
   place(88, 101, glider);
   place(88, 146, glider);
   place(98, 116, toad);
