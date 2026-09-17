@@ -118,7 +118,7 @@ export default function Home() {
 
   useEffect(() => {
     if (fieldPaused) return;
-    const timer = window.setInterval(() => setLifeTick((current) => (current + 1) % lifePatterns.length), 900);
+    const timer = window.setInterval(() => setLifeTick((current) => (current + 1) % lifePatterns.length), 1200);
     return () => window.clearInterval(timer);
   }, [fieldPaused]);
 
