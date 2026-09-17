@@ -139,6 +139,19 @@ function ProductMark() {
   return <span className="product-mark" aria-hidden="true"><i /><i /><i /><i /></span>;
 }
 
+type NavIconKind = "pricing" | "blog" | "enterprise" | "customers" | "docs";
+
+function NavIcon({ kind }: { kind: NavIconKind }) {
+  const paths = {
+    pricing: <><path d="M12 4v16" /><path d="M16 7.5c-.7-1-2-1.5-4-1.5-2.4 0-4 1.1-4 2.8 0 4.2 8 1.8 8 6 0 1.7-1.6 2.7-4 2.7-2 0-3.3-.5-4-1.5" /></>,
+    blog: <><rect x="5" y="4" width="14" height="16" rx="1" /><path d="M8 8h8M8 12h8M8 16h5" /></>,
+    enterprise: <><path d="M5 20V9l5-3v14M10 20h9V4h-9M13 8h3M13 12h3M13 16h3" /></>,
+    customers: <><circle cx="9" cy="8" r="2.5" /><circle cx="16" cy="9" r="2" /><path d="M4.5 18c.3-2.7 2-4.2 4.5-4.2s4.2 1.5 4.5 4.2M14 14c2.7-.2 4.5 1.1 5 3.5" /></>,
+    docs: <><path d="M5 4.5h5c1.1 0 2 .9 2 2V20c0-1.1-.9-2-2-2H5zM19 4.5h-5c-1.1 0-2 .9-2 2V20c0-1.1.9-2 2-2h5z" /></>,
+  };
+  return <svg className="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.3" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">{paths[kind]}</svg>;
+}
+
 function PreviewChrome({ label }: { label: string }) {
   return <div className="preview-chrome"><span className="preview-logo"><ProductMark /></span><span>{label}</span><span className="preview-menu">···</span></div>;
 }
@@ -234,9 +247,17 @@ export default function Home() {
   return (
     <main>
       <nav className="nav">
-        <a className="brand" href="#top"><ProductMark /> KLYNA</a>
-        <div className="nav-links"><a href="#workflow">Pricing</a><a href="#control">Blog</a><a href="#environment">Enterprise</a><a href="#teams">Customers</a><a href="#faq">Docs</a></div>
-        <div className="nav-actions"><a className="button ghost nav-demo" href="#contact">BOOK A DEMO</a><a className="button ghost nav-signin" href="#contact">SIGN IN</a><a className="button mint" href="#start">GET STARTED <Arrow /></a></div>
+        <div className="nav-inner">
+          <a className="brand" href="#top"><ProductMark /> KLYNA</a>
+          <div className="nav-links">
+            <a href="#workflow"><NavIcon kind="pricing" /><span>Pricing</span></a>
+            <a href="#control"><NavIcon kind="blog" /><span>Blog</span></a>
+            <a href="#environment"><NavIcon kind="enterprise" /><span>Enterprise</span></a>
+            <a href="#teams"><NavIcon kind="customers" /><span>Customers</span></a>
+            <a href="#faq"><NavIcon kind="docs" /><span>Docs</span></a>
+          </div>
+          <div className="nav-actions"><a className="button ghost nav-demo" href="#contact">BOOK A DEMO</a><a className="button ghost nav-signin" href="#contact">SIGN IN</a><a className="button mint" href="#start">GET STARTED <Arrow /></a></div>
+        </div>
       </nav>
 
       <div className="hero-shell">
