@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useRef, useState, type CSSProperties, type PointerEvent } from "react";
+import { useEffect, useState } from "react";
 
 const integrations = ["Mintlify", "Knowunity", "Composio", "Cargo", "Loop AI", "Moda", "Dart", "Chronicle Labs", "Sorce", "Taiga", "Trellis", "Hyperspell", "Totalis", "Parrot"];
 const heroAgents = ["Claude Code", "Codex", "Opencode", "Cursor", "Pi", "DeepSeek", "Kimi", "Muse Code"];
@@ -45,92 +45,12 @@ const environmentMedia = [
   ["computer-use", "computer-use.png", "computer-use.webm"],
 ] as const;
 
-const HERO_GRID_COLUMNS = 256;
-const HERO_GRID_ROWS = 160;
-const HERO_CELL_SIZE = 64;
-type LifePattern = ReadonlyArray<readonly [number, number]>;
-const lifeCellKey = (row: number, column: number) => `${row}:${column}`;
-
-const glider: LifePattern = [[0, 1], [1, 2], [2, 0], [2, 1], [2, 2]];
-const blinker: LifePattern = [[0, 0], [0, 1], [0, 2]];
-const toad: LifePattern = [[0, 1], [0, 2], [0, 3], [1, 0], [1, 1], [1, 2]];
-const movingPatterns = [glider, blinker, toad] as const;
-
-function movingSeeds(seed: number) {
-  let value = (seed + 1) * 1664525 + 1013904223;
-  const nextRandom = () => {
-    value = (value * 1664525 + 1013904223) >>> 0;
-    return value / 4294967296;
-  };
-  const cells = new Set<string>();
-  movingPatterns.forEach((pattern, index) => {
-    const row = 64 + Math.floor(nextRandom() * 30);
-    const column = 104 + Math.floor(nextRandom() * 48);
-    pattern.forEach(([rowOffset, columnOffset]) => {
-      cells.add(lifeCellKey(row + rowOffset, column + columnOffset));
-    });
-    if (index === movingPatterns.length - 1) {
-      const extraColumn = 104 + Math.floor(nextRandom() * 48);
-      cells.add(lifeCellKey(70 + Math.floor(nextRandom() * 24), extraColumn));
-    }
-  });
-  return cells;
-}
-
-const initialLifeCells = (() => {
-  const cells = new Set<string>();
-  const place = (row: number, column: number, pattern: LifePattern) => {
-    pattern.forEach(([rowOffset, columnOffset]) => {
-      cells.add(lifeCellKey(row + rowOffset, column + columnOffset));
-    });
-  };
-
-  // Keep the initial population around the center of the large virtual field.
-  // This mirrors the reference composition while leaving enough empty space
-  // for the simulation to breathe on every viewport.
-  place(74, 106, blinker);
-  place(74, 122, blinker);
-  place(74, 138, blinker);
-  // Keep the visible composition moving: every seed is an oscillator or
-  // travelling pattern, so the field never contains hand-pinned still lifes.
-  place(75, 116, toad);
-  place(75, 135, blinker);
-  place(66, 109, glider);
-  place(66, 135, toad);
-  place(88, 101, glider);
-  place(88, 146, glider);
-  place(98, 116, toad);
-  place(107, 126, blinker);
-
-  return cells;
-})();
-
-// Conway's Game of Life, B3/S23: every generation is calculated from the
-// previous generation so births and deaths happen simultaneously.
-function evolveLife(cells: ReadonlySet<string>) {
-  const neighbourCounts = new Map<string, number>();
-
-  cells.forEach((cell) => {
-    const [rowText, columnText] = cell.split(":");
-    const row = Number(rowText);
-    const column = Number(columnText);
-    for (let rowOffset = -1; rowOffset <= 1; rowOffset += 1) {
-      for (let columnOffset = -1; columnOffset <= 1; columnOffset += 1) {
-        if (rowOffset === 0 && columnOffset === 0) continue;
-        const neighbourRow = (row + rowOffset + HERO_GRID_ROWS) % HERO_GRID_ROWS;
-        const neighbourColumn = (column + columnOffset + HERO_GRID_COLUMNS) % HERO_GRID_COLUMNS;
-        const neighbour = lifeCellKey(neighbourRow, neighbourColumn);
-        neighbourCounts.set(neighbour, (neighbourCounts.get(neighbour) ?? 0) + 1);
-      }
-    }
-  });
-
-  const nextGeneration = new Set<string>();
-  neighbourCounts.forEach((count, cell) => {
-    if (count === 3 || (count === 2 && cells.has(cell))) nextGeneration.add(cell);
-  });
-  return nextGeneration;
-}
+const lifePatterns = [
+  [0, 1, 14, 15, 28, 42, 11, 12, 25, 26, 39, 53, 70, 71, 72, 73],
+  [1, 2, 15, 16, 29, 30, 12, 13, 26, 40, 41, 54, 69, 70, 83],
+  [0, 14, 28, 29, 43, 44, 12, 26, 27, 40, 54, 55, 68, 69, 82],
+  [0, 1, 15, 16, 30, 44, 11, 25, 26, 39, 40, 53, 67, 68, 69, 83],
+] as const;
 
 function Arrow() { return <span aria-hidden="true">↗</span>; }
 
@@ -196,9 +116,9 @@ function IntegrationsPreview({ kind, paused }: { kind: string; paused: boolean }
 
 export default function Home() {
   useReveal();
+  const [headlinePaused, setHeadlinePaused] = useState(false);
   const [fieldPaused, setFieldPaused] = useState(false);
-  const [liveCells, setLiveCells] = useState<Set<string>>(initialLifeCells);
-  const [previousLifeCells, setPreviousLifeCells] = useState<Set<string>>(initialLifeCells);
+  const [lifeTick, setLifeTick] = useState(0);
   const [integrationPaused, setIntegrationPaused] = useState(false);
   const [flowPaused, setFlowPaused] = useState(false);
   const [flowTick, setFlowTick] = useState(0);
@@ -208,38 +128,9 @@ export default function Home() {
   const [whatIsOpen, setWhatIsOpen] = useState(false);
   const [environment, setEnvironment] = useState(0);
   const [openFaq, setOpenFaq] = useState(0);
-  const lifeGeneration = useRef(0);
-  const [fieldAlignment, setFieldAlignment] = useState({ x: 0, y: 0 });
-
-  useEffect(() => {
-    const alignFieldToGrid = () => {
-      const hero = document.querySelector<HTMLElement>(".hero");
-      const field = document.querySelector<HTMLElement>(".agent-field");
-      if (!hero || !field) return;
-      const heroBounds = hero.getBoundingClientRect();
-      const fieldBounds = field.getBoundingClientRect();
-      const remainder = (value: number) => ((value % HERO_CELL_SIZE) + HERO_CELL_SIZE) % HERO_CELL_SIZE;
-      setFieldAlignment({
-        x: -remainder(fieldBounds.left - heroBounds.left),
-        y: -remainder(fieldBounds.top - heroBounds.top),
-      });
-    };
-    alignFieldToGrid();
-    window.addEventListener("resize", alignFieldToGrid);
-    return () => window.removeEventListener("resize", alignFieldToGrid);
-  }, []);
-
   useEffect(() => {
     if (fieldPaused) return;
-    const timer = window.setInterval(() => {
-      setLiveCells((current) => {
-        setPreviousLifeCells(current);
-        const generation = lifeGeneration.current;
-        lifeGeneration.current += 1;
-        const evolved = evolveLife(current);
-        return generation % 4 === 0 || evolved.size < 14 ? movingSeeds(generation) : evolved;
-      });
-    }, 1333);
+    const timer = window.setInterval(() => setLifeTick((current) => (current + 1) % lifePatterns.length), 1200);
     return () => window.clearInterval(timer);
   }, [fieldPaused]);
 
@@ -271,22 +162,7 @@ export default function Home() {
     });
   }, [integrationPaused]);
 
-  const toggleLifeCell = (event: PointerEvent<HTMLDivElement>) => {
-    const bounds = event.currentTarget.getBoundingClientRect();
-    const column = Math.floor((event.clientX - bounds.left) / HERO_CELL_SIZE);
-    const row = Math.floor((event.clientY - bounds.top) / HERO_CELL_SIZE);
-    if (row < 0 || row >= HERO_GRID_ROWS || column < 0 || column >= HERO_GRID_COLUMNS) return;
-    const cell = lifeCellKey(row, column);
-    setPreviousLifeCells(liveCells);
-    setLiveCells((current) => {
-      const next = new Set(current);
-      if (next.has(cell)) next.delete(cell);
-      else next.add(cell);
-      return next;
-    });
-  };
-
-  const visibleLifeCells = new Set([...liveCells, ...previousLifeCells]);
+  const liveCells = new Set<number>(lifePatterns[lifeTick]);
 
   return (
     <main>
@@ -306,7 +182,7 @@ export default function Home() {
 
       <div className="hero-shell">
       <section className="hero" id="top">
-        <div className={`agent-field ${fieldPaused ? "paused" : ""}`} role="grid" aria-label="Interactive Conway's Game of Life agent field" onPointerDown={toggleLifeCell} style={{ "--grid-x-shift": `${fieldAlignment.x}px`, "--grid-y-shift": `${fieldAlignment.y}px` } as CSSProperties}>{Array.from(visibleLifeCells, (cell) => { const [rowText, columnText] = cell.split(":"); const row = Number(rowText); const column = Number(columnText); const active = liveCells.has(cell); const rightEdge = !liveCells.has(lifeCellKey(row, (column + 1) % HERO_GRID_COLUMNS)); const bottomEdge = !liveCells.has(lifeCellKey((row + 1) % HERO_GRID_ROWS, column)); const index = row * HERO_GRID_COLUMNS + column; const statuses = ["CODING", "LINTING", "REFACTORING", "RUNNING TESTS", "DEPLOYING", "MERGING"]; return <span key={cell} role="gridcell" aria-label={`Agent ${String((37 * index + 13) % 100).padStart(2, "0")}, ${statuses[index % statuses.length]}`} className={`field-cell ${active ? "active" : "fading"} ${rightEdge ? "has-right-edge" : ""} ${bottomEdge ? "has-bottom-edge" : ""}`} style={{ gridColumn: column + 1, gridRow: row + 1 }}><b>AGENT-{String((37 * index + 13) % 100).padStart(2, "0")}</b><i>{statuses[index % statuses.length]}</i></span>; })}</div>
+        <div className={`agent-field ${fieldPaused ? "paused" : ""}`} aria-hidden="true">{Array.from({ length: 264 }, (_, index) => { const row = Math.floor(index / 22); const column = index % 22; const perimeter = column < 6 || column > 15 || row < 3 || row > 8; const active = perimeter && (liveCells.has((index + row * 3) % 84) || liveCells.has((index + 17) % 84)); return <span key={index} className={`field-cell field-cell-${index % 8} ${active ? "active" : ""}`}><b>AGENT-{String((index * 17) % 99).padStart(2, "0")}</b><i>{["CODING", "DEPLOYING", "REFACTORING", "RUNNING TESTS"][index % 4]}</i></span>; })}</div>
         <div className="hero-panel hero-intro" data-reveal>
           <span className="corner top-left">+</span><span className="corner top-right">+</span><span className="corner bottom-left">+</span><span className="corner bottom-right">+</span>
           <p className="eyebrow hero-intro-item">THE CLOUD CODING AGENT</p>
@@ -315,7 +191,7 @@ export default function Home() {
           <div className="hero-actions hero-intro-item"><a className="button ghost" href="#contact">BOOK A DEMO</a><a className="button mint" href="#start">GET STARTED FOR FREE <Arrow /></a></div>
           <small className="hero-intro-item">Try for 14 days, no card required.</small>
         </div>
-        <div className="hero-controls"><button className="what-button" type="button" onMouseEnter={() => setWhatIsOpen(true)} onFocus={() => setWhatIsOpen(true)} onClick={() => setWhatIsOpen(true)} aria-expanded={whatIsOpen}>WHAT IS THIS?</button><button className="pause" type="button" aria-label={fieldPaused ? "Resume Game of Life" : "Pause Game of Life"} onClick={() => setFieldPaused((value) => !value)}><span aria-hidden="true">{fieldPaused ? "▶" : "Ⅱ"}</span> {fieldPaused ? "RESUME" : "PAUSE"}</button>{whatIsOpen && <div className="what-popover" role="dialog" aria-label="About the Game of Life"><b>GAME OF LIFE · B3/S23</b><h3>Conway’s Game of Life</h3><p>Every square is either alive or dead. Each generation is calculated at the same time from the current generation.</p><ul><li>A live cell survives with two or three live neighbours.</li><li>A dead cell becomes alive with exactly three live neighbours.</li><li>All other live cells die, and all other dead cells stay empty.</li></ul><p className="what-popover-note">Click any square in the field to seed or remove a cell.</p><a href="https://en.wikipedia.org/wiki/Conway%27s_Game_of_Life" target="_blank" rel="noreferrer">Read the rules on Wikipedia ↗</a><button type="button" onClick={() => setWhatIsOpen(false)}>CLOSE</button></div>}</div>
+        <div className="hero-controls"><button className="what-button" type="button" onClick={() => setWhatIsOpen((value) => !value)} aria-expanded={whatIsOpen}>WHAT IS THIS?</button><button className="pause" type="button" aria-label={fieldPaused ? "Resume Game of Life" : "Pause Game of Life"} onClick={() => setFieldPaused((value) => !value)}>{fieldPaused ? "▶ RESUME" : "Ⅱ PAUSE"}</button><label className="headline-pause"><input type="checkbox" aria-label="Pause headline animation" checked={headlinePaused} onChange={(event) => setHeadlinePaused(event.target.checked)} /></label>{whatIsOpen && <div className="what-popover" role="dialog" aria-label="About the Game of Life"><b>GAME OF LIFE</b><p>Each cell represents a cloud agent moving through a real engineering run.</p><button type="button" onClick={() => setWhatIsOpen(false)}>CLOSE</button></div>}</div>
       </section>
 
       <div className="ticker-viewport"><div className="ticker" aria-label="Trusted teams">{[...integrations, ...integrations].map((name, index) => <span key={`${name}-${index}`}>{name}</span>)}</div></div>
