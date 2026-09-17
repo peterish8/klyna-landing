@@ -289,6 +289,7 @@ main{overflow:clip}.hero{height:780px;min-height:0}
 .hero-intro small,
 .hero-intro .hero-actions { margin: 0; }
 .hero-intro .eyebrow { font-size: 10px; }
+.hero-panel.hero-intro .hero-harness-heading { flex: none; margin: 0; }
 .hero-heading {
   margin: 0;
   color: #f4f4ef;

@@ -71,6 +71,14 @@ const initialLifeCells = (() => {
   place(74, 106, blinker);
   place(74, 122, blinker);
   place(74, 138, blinker);
+  // Stable edge anchors keep the reference frame populated while the moving
+  // patterns evolve behind the panel.
+  place(69, 116, block);
+  place(69, 135, block);
+  place(85, 116, block);
+  place(85, 135, block);
+  place(75, 116, toad);
+  place(75, 135, blinker);
   place(66, 109, glider);
   place(66, 135, toad);
   place(79, 113, beacon);
@@ -266,7 +274,7 @@ export default function Home() {
         <div className="hero-panel hero-intro" data-reveal>
           <span className="corner top-left">+</span><span className="corner top-right">+</span><span className="corner bottom-left">+</span><span className="corner bottom-right">+</span>
           <p className="eyebrow hero-intro-item">THE CLOUD CODING AGENT</p>
-          <h1 className="hero-heading hero-intro-item">The Cloud<br />Coding Agent</h1>
+          <h1 className="hero-harness-heading hero-intro-item" aria-label="Your coding agent on Cloud" data-playing="true"><span className="hero-harness-window" aria-hidden="true"><span className="hero-harness-track">{[...heroAgents, heroAgents[0]].map((provider, index) => <span key={`${provider}-${index}-hero`} className="hero-harness-name" data-provider={providerSlug(provider)}><span className={`hero-harness-brand hero-provider-${providerSlug(provider)}`}><ProviderLogo provider={provider} /><span>{provider}</span></span></span>)}</span></span><span className="hero-harness-suffix" aria-hidden="true"> on Cloud</span></h1>
           <p className="hero-copy hero-intro-item">Run coding agents inside cloud machines with your codebases, tooling, and dependencies. Delegate, iterate, review from anywhere.</p>
           <div className="hero-actions hero-intro-item"><a className="button ghost" href="#contact">BOOK A DEMO</a><a className="button mint" href="#start">GET STARTED FOR FREE <Arrow /></a></div>
           <small className="hero-intro-item">Try for 14 days, no card required.</small>
